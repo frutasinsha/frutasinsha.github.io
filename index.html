@@ -142,6 +142,15 @@
     .fi-switch{padding:2px}
     .fi-switch button{padding:6px 10px;font-size:.74rem}
   }
+  .fi-vis{display:inline-flex;align-items:center;gap:6px;border:none;border-radius:20px;padding:7px 10px;font-weight:700;font-size:.78rem;cursor:pointer;background:#eee;color:#777}
+  .fi-vis span{width:26px;height:15px;border-radius:10px;background:#c9c9c9;position:relative;transition:background .15s}
+  .fi-vis span::after{content:"";position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#fff;transition:left .15s}
+  .fi-vis.on{background:var(--verde-claro);color:var(--verde-osc)}
+  .fi-vis.on span{background:var(--verde)}
+  .fi-vis.on span::after{left:13px}
+  .fi-admin-row.fi-off{opacity:.6;background:#f6f6f6}
+  .fi-offtag{color:#c0392b}
+  @media(max-width:520px){.fi-ar-actions{flex-wrap:wrap;justify-content:flex-end}}
   .fi-tabs{display:flex;gap:6px;border-bottom:2px solid #eee;margin:4px 0 14px}
   .fi-tabs button{border:none;background:none;padding:10px 16px;font-weight:700;font-size:.95rem;color:#888;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
   .fi-tabs button.on{color:var(--verde-osc);border-bottom-color:var(--verde)}
@@ -387,16 +396,16 @@ function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return
 function money(n){return Number(n).toFixed(2)+" €";}
 function find(id){for(var i=0;i<S.products.length;i++)if(S.products[i].id===id)return S.products[i];return null;}
 function cartCount(){return Object.keys(S.cart).length;}
-function cartItems(){var a=[];for(var k in S.cart){var p=find(k);if(p)a.push(Object.assign({},p,{qty:S.cart[k]}));}return a;}
+function cartItems(){var a=[];for(var k in S.cart){var p=find(k);if(p&&p.activo!==false)a.push(Object.assign({},p,{qty:S.cart[k]}));}return a;}
 function cartTotal(){return cartItems().reduce(function(a,p){return a+p.precio*p.qty;},0);}
 function toast(m){var t=document.createElement("div");t.className="fi-toast";t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove();},m.length>60?5000:1900);}
 
 /* ============ SUPABASE: carga y operaciones ============ */
 async function cargarProductos(){
   if(!configurado){S.products=SEED.slice();return;}
-  var r=await sb.from("productos").select("id,nombre,cat,precio,unidad,img,descripcion,forma,color,orden,creado").order("orden",{ascending:true,nullsFirst:false}).order("creado",{ascending:true}).order("nombre",{ascending:true});
+  var r=await sb.from("productos").select("id,nombre,cat,precio,unidad,img,descripcion,forma,color,orden,creado,activo").order("orden",{ascending:true,nullsFirst:false}).order("creado",{ascending:true}).order("nombre",{ascending:true});
   if(r.error){console.error(r.error);toast("Error cargando productos");S.products=SEED.slice();return;}
-  S.products=(r.data||[]).map(function(p){return {id:p.id,nombre:p.nombre,cat:p.cat,precio:Number(p.precio),unidad:p.unidad,img:p.img||"",desc:p.descripcion||"",forma:p.forma||"auto",color:p.color||"auto"};});
+  S.products=(r.data||[]).map(function(p){return {activo:p.activo!==false,id:p.id,nombre:p.nombre,cat:p.cat,precio:Number(p.precio),unidad:p.unidad,img:p.img||"",desc:p.descripcion||"",forma:p.forma||"auto",color:p.color||"auto"};});
 }
 async function cargarPedidos(){
   if(!configurado||!S.user)return;
@@ -448,7 +457,7 @@ function render(){
 }
 function header(){return '<div class="fi-header"><div class="fi-brand" data-act="home"><div class="fi-mark"><svg viewBox="0 0 64 64" width="30" height="30" aria-hidden="true"><circle cx="21" cy="27" r="9" fill="#e23b30"/><circle cx="33" cy="22" r="10" fill="#ffd21a"/><circle cx="45" cy="27" r="9" fill="#ff8c1a"/><circle cx="27" cy="32" r="7" fill="#7cbf3f"/><circle cx="40" cy="33" r="7" fill="#9c54c4"/><path d="M31 12c2-4 6-5 9-4-1 3-5 5-9 4z" fill="#5aa83a"/><path d="M8 33h48l-5 21a3 3 0 0 1-3 2H16a3 3 0 0 1-3-2z" fill="#d6a45e"/><path d="M8 33h48v5H8z" fill="#b07b3f"/><path d="M22 40v13M32 40v13M42 40v13" stroke="#a06f30" stroke-width="2.4" stroke-linecap="round"/></svg></div><div><b>Frutas Insha 3 Allah</b><span>Madrid</span></div></div><div class="fi-switch"><button data-view="tienda" class="'+(S.view==="tienda"?"on":"")+'">Comprar</button><button data-view="admin" class="'+(S.view==="admin"?"on":"")+'">Mi tienda</button></div></div>';}
 function shop(){
-  var qn=norm(S.search);var list=S.products.filter(function(p){return (S.cat==="todos"||p.cat===S.cat)&&(!qn||textoBusqueda(p).indexOf(qn)>=0);});
+  var qn=norm(S.search);var list=S.products.filter(function(p){return p.activo!==false&&(S.cat==="todos"||p.cat===S.cat)&&(!qn||textoBusqueda(p).indexOf(qn)>=0);});
   var cats=CATS.map(function(c){return '<button data-cat="'+c.id+'" class="'+(S.cat===c.id?"on":"")+'"><span>'+c.emoji+'</span>'+c.nombre+'</button>';}).join("");
   var cards=list.map(function(p){return '<div class="fi-card" data-open="'+p.id+'"><div class="fi-thumb"><img loading="lazy" src="'+imgFor(p)+'" data-pid="'+p.id+'" onerror="__fbImg(this)" alt="'+esc(p.nombre)+'"></div><div class="fi-cbody"><h3>'+esc(p.nombre)+'</h3><p class="fi-desc">'+esc(p.desc)+'</p><div class="fi-price">'+money(p.precio)+' <small>/ '+p.unidad+'</small></div><div class="fi-stepwrap" data-sw="'+p.id+'">'+stepperInner(p)+'</div></div></div>';}).join("");
   return '<div class="fi-hero"><h1>Fruta y verdura fresca, de la huerta a tu mesa</h1><p>Pide online y recibe en casa.</p></div><div class="fi-search"><input id="q" placeholder="🔍 Buscar producto…" value="'+esc(S.search)+'"></div><div class="fi-cats">'+cats+'</div>'+(list.length?'':'<p class="fi-empty">No hay productos en esta categoría todavía.</p>')+'<div class="fi-grid">'+cards+'</div>';
@@ -482,9 +491,9 @@ function admin(){
   }else{
     var q=norm(S.adminQ);
     var vis=S.products.filter(function(p){return !q||textoBusqueda(p).indexOf(q)>=0;});
-    var rows=vis.map(function(p){return '<div class="fi-admin-row"><img loading="lazy" src="'+imgFor(p)+'" data-pid="'+p.id+'" onerror="__fbImg(this)" alt=""><div class="fi-ar-info"><b>'+esc(p.nombre)+'</b><small>'+money(p.precio)+' / '+p.unidad+' · '+p.cat+'</small></div><div class="fi-ar-actions"><button class="fi-edit" data-edit="'+p.id+'">Editar</button><button class="fi-del" data-del="'+p.id+'">🗑</button></div></div>';}).join("");
+    var rows=vis.map(function(p){var on=p.activo!==false;return '<div class="fi-admin-row'+(on?'':' fi-off')+'"><img loading="lazy" src="'+imgFor(p)+'" data-pid="'+p.id+'" onerror="__fbImg(this)" alt=""><div class="fi-ar-info"><b>'+esc(p.nombre)+'</b><small>'+money(p.precio)+' / '+p.unidad+' · '+p.cat+(on?'':' · <b class="fi-offtag">Oculto</b>')+'</small></div><div class="fi-ar-actions"><button class="fi-vis'+(on?' on':'')+'" data-vis="'+p.id+'" title="'+(on?'Visible en Comprar: pulsa para ocultar':'Oculto en Comprar: pulsa para mostrar')+'"><span></span>'+(on?'Visible':'Oculto')+'</button><button class="fi-edit" data-edit="'+p.id+'">Editar</button><button class="fi-del" data-del="'+p.id+'">🗑</button></div></div>';}).join("");
     body='<input class="fi-asearch" id="aq" placeholder="🔍 Buscar producto…" value="'+esc(S.adminQ||"")+'">'+
-      '<div class="fi-tabbar"><span>'+(q?vis.length+' de '+np+' productos':np+' productos publicados')+'</span><button class="fi-newbtn" data-new="1">+ Nuevo producto</button></div>'+
+      '<div class="fi-tabbar"><span>'+(q?vis.length+' de '+np+' productos':S.products.filter(function(p){return p.activo!==false;}).length+' visibles de '+np+' productos')+'</span><button class="fi-newbtn" data-new="1">+ Nuevo producto</button></div>'+
       (rows||'<p class="fi-empty">Ningún producto coincide con la búsqueda.</p>');
   }
   return '<div class="fi-view">'+head+body+'</div>';
@@ -654,6 +663,10 @@ function bind(){
   // admin/form
   var nw=app.querySelector("[data-new]");if(nw)nw.onclick=function(){S.adminTab="productos";S._fotos=[];S.adding=true;S.editId=null;S._f=null;render();};
   app.querySelectorAll("[data-edit]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-edit");S.editId=id;S.adding=false;S._f=null;S._fotos=null;render();cargarFotos(id);};});
+  app.querySelectorAll("[data-vis]").forEach(function(b){b.onclick=async function(){var id=b.getAttribute("data-vis");var p=find(id);if(!p)return;b.disabled=true;
+    var nuevo=!(p.activo!==false);var r=await sb.from("productos").update({activo:nuevo}).eq("id",id).select("id");
+    if(r.error||!r.data||!r.data.length){toast(r.error?"Error: "+r.error.message:"No se ha guardado: tu usuario no tiene permiso");b.disabled=false;return;}
+    p.activo=nuevo;render();toast(nuevo?p.nombre+" vuelve a verse en Comprar":p.nombre+" oculto en Comprar");};});
   app.querySelectorAll("[data-del]").forEach(function(b){b.onclick=async function(){var id=b.getAttribute("data-del");b.disabled=true;var ok=await borrarProducto(id);await cargarProductos();render();if(ok)toast("Producto borrado");};});
   ["f_nombre","f_desc","f_cat","f_forma","f_color"].forEach(function(id){var el=document.getElementById(id);if(el){el.oninput=function(){syncForm();updatePreview();};el.onchange=function(){syncForm();updatePreview();};}});
   var up=app.querySelector("[data-upload]");if(up)up.onclick=function(){document.getElementById("f_file").click();};
