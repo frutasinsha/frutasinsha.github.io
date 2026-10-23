@@ -364,7 +364,7 @@ function find(id){for(var i=0;i<S.products.length;i++)if(S.products[i].id===id)r
 function cartCount(){return Object.keys(S.cart).length;}
 function cartItems(){var a=[];for(var k in S.cart){var p=find(k);if(p)a.push(Object.assign({},p,{qty:S.cart[k]}));}return a;}
 function cartTotal(){return cartItems().reduce(function(a,p){return a+p.precio*p.qty;},0);}
-function toast(m){var t=document.createElement("div");t.className="fi-toast";t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove();},1900);}
+function toast(m){var t=document.createElement("div");t.className="fi-toast";t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove();},m.length>60?5000:1900);}
 
 /* ============ SUPABASE: carga y operaciones ============ */
 async function cargarProductos(){
@@ -382,13 +382,16 @@ async function guardarProducto(prod,esNuevo){
   if(!configurado){toast("Configura Supabase para guardar");return false;}
   var row={nombre:prod.nombre,cat:prod.cat,precio:prod.precio,unidad:prod.unidad,img:prod.img,descripcion:prod.desc,forma:prod.forma,color:prod.color};
   var r= esNuevo ? await sb.from("productos").insert(row).select() : await sb.from("productos").update(row).eq("id",prod.id).select();
-  if(r.error){console.error(r.error);toast("Error: "+r.error.message);return false;}
+  if(r.error){console.error(r.error);toast(/row-level security|permission/i.test(r.error.message)?"No se ha guardado: tu usuario ("+((S.user&&S.user.email)||"?")+") no tiene permiso. Entra con alebarri22@hotmail.com":"Error: "+r.error.message);return false;}
+  if(!r.data||!r.data.length){toast("No se ha guardado: tu usuario ("+((S.user&&S.user.email)||"?")+") no tiene permiso. Entra con alebarri22@hotmail.com");return false;}
   return true;
 }
 async function borrarProducto(id){
   if(!configurado)return;
-  var r=await sb.from("productos").delete().eq("id",id);
-  if(r.error)toast("Error al borrar");
+  var r=await sb.from("productos").delete().eq("id",id).select();
+  if(r.error){toast("Error al borrar: "+r.error.message);return false;}
+  if(!r.data||!r.data.length){toast("No se ha guardado: tu usuario ("+((S.user&&S.user.email)||"?")+") no tiene permiso. Entra con alebarri22@hotmail.com");return false;}
+  return true;
 }
 async function enviarPedido(datos,items,total,envio){
   var row={acepta_condiciones:new Date().toISOString(),cliente:datos.nombre,telefono:datos.tel,direccion:datos.dir,pago:datos.pago,total:total+envio,items:items.map(function(p){return {nombre:p.nombre,qty:p.qty,unidad:p.unidad,precio:p.precio};})};
@@ -430,7 +433,7 @@ function checkout(){var items=cartItems();var total=cartTotal();var envio=total>
 function login(){return '<div class="fi-view"><h2 class="fi-t">Acceso tienda</h2><p class="fi-desc-big">Introduce tu email y contraseña para gestionar productos y ver pedidos.</p><input id="l_email" type="email" placeholder="Email"><input id="l_pass" type="password" placeholder="Contraseña"><button class="fi-bigbtn" data-login="1">Entrar</button><p class="fi-hint" id="l_msg"></p></div>';}
 function admin(){
   var tab=S.adminTab||"pedidos", np=S.products.length, no=(S.pedidos||[]).length;
-  var head='<div class="fi-admin-head"><div><h2>Mi tienda</h2></div><div><button class="fi-edit" data-logout="1">Salir</button></div></div>'+
+  var head='<div class="fi-admin-head"><div><h2>Mi tienda</h2><p>Conectado como '+esc((S.user&&S.user.email)||"")+'</p></div><div><button class="fi-edit" data-logout="1">Salir</button></div></div>'+
     '<div class="fi-tabs"><button data-atab="pedidos" class="'+(tab==="pedidos"?"on":"")+'">Pedidos <span>'+no+'</span></button>'+
     '<button data-atab="productos" class="'+(tab==="productos"?"on":"")+'">Productos <span>'+np+'</span></button></div>';
   var body;
@@ -556,6 +559,12 @@ function showLegal(k){var d=LEGAL[k];if(!d)return;var m=document.createElement("
   m.innerHTML='<div class="fi-legalcard" role="dialog" aria-label="'+d.t+'"><div class="fi-legalhead"><h2>'+d.t+'</h2><button class="fi-legalx" aria-label="Cerrar">✕</button></div><div class="fi-legalbody">'+d.h()+'</div></div>';
   m.onclick=function(e){if(e.target===m||e.target.classList.contains("fi-legalx"))m.remove();};document.body.appendChild(m);}
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-legal]");if(!a)return;e.preventDefault();e.stopPropagation();showLegal(a.getAttribute("data-legal"));},true);
+
+function reducirFoto(file,max,q){return new Promise(function(ok,ko){var u=URL.createObjectURL(file);var im=new Image();
+  im.onload=function(){var w=im.naturalWidth,h=im.naturalHeight,k=Math.min(1,max/Math.max(w,h));var c=document.createElement("canvas");
+    c.width=Math.round(w*k);c.height=Math.round(h*k);var x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
+    URL.revokeObjectURL(u);ok(c.toDataURL("image/jpeg",q));};
+  im.onerror=function(){URL.revokeObjectURL(u);ko();};im.src=u;});}
 function cartbar(){return '<button class="fi-cartbar" data-checkout="1"><span>🛒 '+cartCount()+' producto'+(cartCount()>1?"s":"")+'</span><span>'+money(cartTotal())+' · Tramitar pedido →</span></button>';}
 
 /* ============ EVENTOS ============ */
@@ -586,10 +595,11 @@ function bind(){
   // admin/form
   var nw=app.querySelector("[data-new]");if(nw)nw.onclick=function(){S.adminTab="productos";S.adding=true;S.editId=null;S._f=null;render();};
   app.querySelectorAll("[data-edit]").forEach(function(b){b.onclick=function(){S.editId=b.getAttribute("data-edit");S.adding=false;S._f=null;render();};});
-  app.querySelectorAll("[data-del]").forEach(function(b){b.onclick=async function(){var id=b.getAttribute("data-del");await borrarProducto(id);await cargarProductos();render();toast("Producto borrado");};});
+  app.querySelectorAll("[data-del]").forEach(function(b){b.onclick=async function(){var id=b.getAttribute("data-del");b.disabled=true;var ok=await borrarProducto(id);await cargarProductos();render();if(ok)toast("Producto borrado");};});
   ["f_nombre","f_desc","f_cat","f_forma","f_color"].forEach(function(id){var el=document.getElementById(id);if(el){el.oninput=function(){syncForm();updatePreview();};el.onchange=function(){syncForm();updatePreview();};}});
   var up=app.querySelector("[data-upload]");if(up)up.onclick=function(){document.getElementById("f_file").click();};
-  var file=document.getElementById("f_file");if(file)file.onchange=function(e){var fl=e.target.files[0];if(!fl)return;var r=new FileReader();r.onload=function(){syncForm();S._f.img=r.result;render();};r.readAsDataURL(fl);};
+  var file=document.getElementById("f_file");if(file)file.onchange=function(e){var fl=e.target.files[0];if(!fl)return;if(!/^image\//.test(fl.type)){toast("El archivo no es una imagen");return;}toast("Procesando foto…");
+    reducirFoto(fl,900,0.82).then(function(url){syncForm();S._f.img=url;render();}).catch(function(){toast("No se pudo leer la foto. Prueba con otra (JPG o PNG).");});};
   var ci=app.querySelector("[data-clearimg]");if(ci)ci.onclick=function(){syncForm();S._f.img="";render();};
   var sv=app.querySelector("[data-save]");if(sv)sv.onclick=async function(){syncForm();var f=S._f;var esNuevo=!S.editId;var prod={id:S.editId,nombre:(f.nombre||"").trim()||"Producto",desc:(f.desc||"").trim(),precio:parseFloat(f.precio)||0,unidad:f.unidad,cat:f.cat,forma:f.forma,color:f.color,img:f.img};sv.disabled=true;sv.textContent="Guardando…";var ok=await guardarProducto(prod,esNuevo);if(ok){await cargarProductos();S.editId=null;S.adding=false;S._f=null;render();toast(esNuevo?"Producto publicado":"Producto actualizado");}else{sv.disabled=false;sv.textContent="Guardar";}};
 }
