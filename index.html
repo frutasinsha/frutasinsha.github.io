@@ -369,7 +369,7 @@ function toast(m){var t=document.createElement("div");t.className="fi-toast";t.t
 /* ============ SUPABASE: carga y operaciones ============ */
 async function cargarProductos(){
   if(!configurado){S.products=SEED.slice();return;}
-  var r=await sb.from("productos").select("*").order("creado",{ascending:false});
+  var r=await sb.from("productos").select("*").order("orden",{ascending:true,nullsFirst:false}).order("creado",{ascending:true}).order("nombre",{ascending:true});
   if(r.error){console.error(r.error);toast("Error cargando productos");S.products=SEED.slice();return;}
   S.products=(r.data||[]).map(function(p){return {id:p.id,nombre:p.nombre,cat:p.cat,precio:Number(p.precio),unidad:p.unidad,img:p.img||"",desc:p.descripcion||"",forma:p.forma||"auto",color:p.color||"auto"};});
 }
