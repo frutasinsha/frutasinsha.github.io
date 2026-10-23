@@ -104,6 +104,19 @@
   .fi-ptable td{padding:10px 12px;border-left:1px solid #eee;white-space:nowrap;text-align:center}
   .fi-ptable tr+tr td,.fi-ptable tr+tr th{border-top:1px solid #eee}
   .fi-sortsel{padding:7px 10px;border:1px solid #ddd;border-radius:10px;font-size:.85rem;background:#fff}
+  .fi-legalinfo{font-size:.8rem;color:#777;margin:4px 0 10px;line-height:1.45}
+  .fi-legalchk{display:flex;gap:10px;align-items:flex-start;font-size:.88rem;color:#444;margin:6px 0 14px;cursor:pointer}
+  .fi-legalchk input{width:20px;height:20px;margin:1px 0 0;flex-shrink:0;accent-color:var(--verde)}
+  .fi-legalchk a,.fi-flinks a,.fi-legalbody a{color:var(--verde-osc);font-weight:600}
+  .fi-footer{max-width:1100px;margin:30px auto 0;padding:22px 16px 30px;border-top:1px solid #e6e6e6;font-size:.82rem;color:#666;display:flex;flex-direction:column;gap:8px;text-align:center}
+  .fi-flinks{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:center}
+  .fi-legalcard{background:#fff;border-radius:18px;max-width:720px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+  .fi-legalhead{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #eee}
+  .fi-legalhead h2{margin:0;font-size:1.15rem;color:var(--verde-osc)}
+  .fi-legalx{border:none;background:#f2f2f2;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:1rem}
+  .fi-legalbody{padding:6px 20px 20px;overflow-y:auto;font-size:.9rem;line-height:1.55;color:#333}
+  .fi-legalbody h4{margin:16px 0 4px;color:var(--verde-osc)}
+  .fi-credits{font-size:.78rem;padding-left:18px;word-break:break-word}
   .fi-tabs{display:flex;gap:6px;border-bottom:2px solid #eee;margin:4px 0 14px}
   .fi-tabs button{border:none;background:none;padding:10px 16px;font-weight:700;font-size:.95rem;color:#888;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
   .fi-tabs button.on{color:var(--verde-osc);border-bottom-color:var(--verde)}
@@ -378,7 +391,7 @@ async function borrarProducto(id){
   if(r.error)toast("Error al borrar");
 }
 async function enviarPedido(datos,items,total,envio){
-  var row={cliente:datos.nombre,telefono:datos.tel,direccion:datos.dir,pago:datos.pago,total:total+envio,items:items.map(function(p){return {nombre:p.nombre,qty:p.qty,unidad:p.unidad,precio:p.precio};})};
+  var row={acepta_condiciones:new Date().toISOString(),cliente:datos.nombre,telefono:datos.tel,direccion:datos.dir,pago:datos.pago,total:total+envio,items:items.map(function(p){return {nombre:p.nombre,qty:p.qty,unidad:p.unidad,precio:p.precio};})};
   if(!configurado)return true; // demo
   var r=await sb.from("pedidos").insert(row);
   if(r.error){console.error(r.error);toast("Error al enviar el pedido");return false;}
@@ -401,6 +414,7 @@ function render(){
   if(!configurado)h+='<div class="fi-banner">⚙️ Falta configurar Supabase: edita SUPABASE_URL y SUPABASE_KEY en el archivo. Mientras tanto ves datos de ejemplo y los cambios no se guardan.</div>';
   if(S.view==="tienda"){ if(S.screen==="shop")h+=shop(); else if(S.screen==="detail")h+=detail(); else if(S.screen==="checkout")h+=checkout(); }
   else { if(!S.user)h+=login(); else if(S.editId||S.adding)h+=form(); else h+=admin(); }
+  h+=footer();
   if(S.view==="tienda"&&cartCount()>0&&S.screen==="shop")h+=cartbar();
   app.innerHTML=h;bind();
 }
@@ -412,7 +426,7 @@ function shop(){
   return '<div class="fi-hero"><h1>Fruta y verdura fresca, de la huerta a tu mesa</h1><p>Selección diaria del mercado central. Pide online y recibe en casa.</p></div><div class="fi-search"><input id="q" placeholder="🔍 Buscar producto…" value="'+esc(S.search)+'"></div><div class="fi-cats">'+cats+'</div>'+(list.length?'':'<p class="fi-empty">No hay productos en esta categoría todavía.</p>')+'<div class="fi-grid">'+cards+'</div>';
 }
 function detail(){var p=find(S.detailId);if(!p){S.screen="shop";return shop();}var step=p.unidad==="kg"?0.5:1;if(S._qty==null)S._qty=1;return '<div class="fi-view"><button class="fi-back" data-back="shop">← Volver</button><div class="fi-detail-img"><img loading="lazy" src="'+imgFor(p)+'" data-pid="'+p.id+'" onerror="__fbImg(this)" alt="'+esc(p.nombre)+'"></div><h2 class="fi-t">'+esc(p.nombre)+'</h2><p class="fi-desc-big">'+esc(p.desc)+'</p><div class="fi-price-big">'+money(p.precio)+' <small>/ '+p.unidad+'</small></div><div class="fi-qty"><button data-q="-">−</button><span id="qv">'+S._qty+' '+p.unidad+'</span><button data-q="+">+</button></div><div class="fi-subtotal">Subtotal: <b id="sub">'+money(p.precio*S._qty)+'</b></div><button class="fi-bigbtn" data-addq="'+p.id+'">Añadir al carrito</button></div>';}
-function checkout(){var items=cartItems();var total=cartTotal();var envio=total>=25?0:2.5;var rows=items.map(function(p){return '<div class="fi-order-row"><img loading="lazy" src="'+imgFor(p)+'" data-pid="'+p.id+'" onerror="__fbImg(this)" alt=""><div class="fi-or-info"><b>'+esc(p.nombre)+'</b><small>'+p.qty+' '+p.unidad+' × '+money(p.precio)+'</small></div><span>'+money(p.precio*p.qty)+'</span></div>';}).join("");return '<div class="fi-view"><button class="fi-back" data-back="shop">← Seguir comprando</button><h2 class="fi-t">Tu pedido</h2>'+rows+'<div class="fi-totals"><div><span>Subtotal</span><span>'+money(total)+'</span></div><div><span>Envío '+(envio===0?"(gratis +25€)":"")+'</span><span>'+money(envio)+'</span></div><div class="fi-grand"><span>Total</span><span>'+money(total+envio)+'</span></div></div><h3>Datos de entrega</h3><input id="c_nombre" placeholder="Nombre y apellidos"><input id="c_tel" placeholder="Teléfono"><input id="c_dir" placeholder="Dirección de entrega (Tetuán y alrededores)"><select id="c_pago"><option value="tarjeta">Pago con tarjeta (al recibir)</option><option value="efectivo">Efectivo al recibir</option></select><button class="fi-bigbtn" data-confirm="1">Confirmar pedido · '+money(total+envio)+'</button><p class="fi-hint">Completa nombre, teléfono y dirección para continuar.</p></div>';}
+function checkout(){var items=cartItems();var total=cartTotal();var envio=total>=25?0:2.5;var rows=items.map(function(p){return '<div class="fi-order-row"><img loading="lazy" src="'+imgFor(p)+'" data-pid="'+p.id+'" onerror="__fbImg(this)" alt=""><div class="fi-or-info"><b>'+esc(p.nombre)+'</b><small>'+p.qty+' '+p.unidad+' × '+money(p.precio)+'</small></div><span>'+money(p.precio*p.qty)+'</span></div>';}).join("");return '<div class="fi-view"><button class="fi-back" data-back="shop">← Seguir comprando</button><h2 class="fi-t">Tu pedido</h2>'+rows+'<div class="fi-totals"><div><span>Subtotal</span><span>'+money(total)+'</span></div><div><span>Envío '+(envio===0?"(gratis +25€)":"")+'</span><span>'+money(envio)+'</span></div><div class="fi-grand"><span>Total</span><span>'+money(total+envio)+'</span></div></div><h3>Datos de entrega</h3><input id="c_nombre" placeholder="Nombre y apellidos"><input id="c_tel" placeholder="Teléfono"><input id="c_dir" placeholder="Dirección de entrega (Tetuán y alrededores)"><select id="c_pago"><option value="tarjeta">Pago con tarjeta (al recibir)</option><option value="efectivo">Efectivo al recibir</option></select><p class="fi-legalinfo">Precios con IVA incluido. Al tratarse de productos perecederos, no se aplica el derecho de desistimiento (art. 103.d del TRLGDCU); si algún producto llega en mal estado, te lo cambiamos o reembolsamos.</p><label class="fi-legalchk"><input type="checkbox" id="c_ok"><span>He leído y acepto las <a href="#" data-legal="condiciones">Condiciones generales de contratación</a> y la <a href="#" data-legal="privacidad">Política de privacidad</a>.</span></label><button class="fi-bigbtn" data-confirm="1">Confirmar pedido · '+money(total+envio)+'</button><p class="fi-hint">Completa nombre, teléfono y dirección para continuar.</p></div>';}
 function login(){return '<div class="fi-view"><h2 class="fi-t">Acceso tienda</h2><p class="fi-desc-big">Introduce tu email y contraseña para gestionar productos y ver pedidos.</p><input id="l_email" type="email" placeholder="Email"><input id="l_pass" type="password" placeholder="Contraseña"><button class="fi-bigbtn" data-login="1">Entrar</button><p class="fi-hint" id="l_msg"></p></div>';}
 function admin(){
   var tab=S.adminTab||"pedidos", np=S.products.length, no=(S.pedidos||[]).length;
@@ -478,6 +492,70 @@ function changeQty(id,dir){var p=find(id);if(!p)return;var step=p.unidad==="kg"?
 function refreshCartbar(){var old=document.querySelector(".fi-cartbar");if(old)old.remove();
   if(S.view==="tienda"&&S.screen==="shop"&&cartCount()>0){app.insertAdjacentHTML("beforeend",cartbar());
     var cb=app.querySelector("[data-checkout]");if(cb)cb.onclick=function(){S.screen="checkout";render();};}}
+
+/* ============ TEXTOS LEGALES ============ */
+/* Rellena aquí los datos reales del titular de la tienda */
+var TITULAR={
+  nombre:"[NOMBRE Y APELLIDOS O RAZÓN SOCIAL]",
+  nif:"[NIF/CIF]",
+  domicilio:"[DIRECCIÓN COMPLETA DEL LOCAL], Madrid",
+  email:"[EMAIL DE CONTACTO]",
+  telefono:"[TELÉFONO]",
+  registro:"" /* p. ej. "Inscrita en el Registro Mercantil de Madrid, tomo X, folio Y, hoja M-Z" (solo sociedades) */
+};
+var FECHA_LEGAL="23 de octubre de 2026";
+function titularHTML(){return '<p><b>Titular:</b> '+TITULAR.nombre+'<br><b>NIF/CIF:</b> '+TITULAR.nif+'<br><b>Domicilio:</b> '+TITULAR.domicilio+'<br><b>Email:</b> '+TITULAR.email+'<br><b>Teléfono:</b> '+TITULAR.telefono+(TITULAR.registro?'<br>'+TITULAR.registro:'')+'</p>';}
+function creditosHTML(){
+  var seen={};var li=S.products.filter(function(p){return p.img&&p.img.indexOf("wikimedia.org")>=0;}).map(function(p){
+    var file=decodeURIComponent(p.img.split("/").pop().replace(/^\d+px-/,""));if(seen[file])return "";seen[file]=1;
+    return '<li>'+esc(p.nombre)+': <a href="https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(file)+'" target="_blank" rel="noopener">'+esc(file)+'</a></li>';}).join("");
+  return li?'<ul class="fi-credits">'+li+'</ul>':'';}
+var LEGAL={
+ aviso:{t:"Aviso legal",h:function(){return ''+
+  '<h4>1. Datos identificativos</h4><p>En cumplimiento del artículo 10 de la Ley 34/2002, de servicios de la sociedad de la información y de comercio electrónico (LSSI-CE), se informa de los datos del titular de este sitio web:</p>'+titularHTML()+
+  '<h4>2. Objeto</h4><p>Este sitio web permite consultar el catálogo de fruta, verdura y setas de Frutas Insha 3 Allah y realizar pedidos para su entrega a domicilio en Madrid (Tetuán y alrededores).</p>'+
+  '<h4>3. Condiciones de uso</h4><p>El usuario se compromete a hacer un uso adecuado del sitio, a facilitar datos veraces en sus pedidos y a no emplearlo para actividades ilícitas o que puedan dañar el servicio.</p>'+
+  '<h4>4. Propiedad intelectual e industrial</h4><p>El diseño, los textos y el nombre comercial pertenecen al titular. Las fotografías de producto proceden de Wikimedia Commons y se usan conforme a sus licencias libres (en su mayoría Creative Commons); la autoría y la licencia de cada imagen figuran en su ficha, enlazada en el apartado de créditos.</p>'+
+  '<h4>5. Responsabilidad</h4><p>El titular procura que la información sea exacta y esté actualizada, pero no garantiza la ausencia de errores tipográficos en precios o descripciones; si se detecta alguno, se comunicará al cliente antes de la entrega para que decida si mantiene el pedido. No se responsabiliza de los contenidos de sitios de terceros enlazados.</p>'+
+  '<h4>6. Legislación aplicable</h4><p>Este aviso se rige por la legislación española.</p>'+
+  '<h4>Créditos de imágenes</h4>'+creditosHTML();}},
+ condiciones:{t:"Condiciones generales de contratación",h:function(){return ''+
+  '<p>Estas condiciones regulan la compra de productos a través de este sitio web y se aplican conforme al Real Decreto Legislativo 1/2007 (Texto Refundido de la Ley General para la Defensa de los Consumidores y Usuarios, TRLGDCU) y la LSSI-CE. Para realizar un pedido es necesario aceptarlas expresamente.</p>'+
+  '<h4>1. Vendedor</h4>'+titularHTML()+
+  '<h4>2. Productos y precios</h4><p>Los precios se muestran en euros con el IVA incluido. Los productos vendidos por kilo se preparan al peso más próximo posible a la cantidad pedida; si el peso real difiere de forma apreciable, se informará al cliente del importe final antes de la entrega. La disponibilidad depende del género de temporada; si algún producto no está disponible, se avisará al cliente para sustituirlo o retirarlo del pedido.</p>'+
+  '<h4>3. Proceso de compra</h4><p>1) Añade los productos al carrito. 2) Pulsa «Tramitar pedido». 3) Indica nombre, teléfono, dirección y forma de pago. 4) Acepta estas condiciones y la política de privacidad. 5) Pulsa «Confirmar pedido». El contrato se perfecciona con la confirmación telefónica del pedido por parte de la tienda. El pedido queda registrado; puedes solicitar una copia por email o teléfono. Idioma del contrato: español.</p>'+
+  '<h4>4. Gastos y zona de entrega</h4><p>Reparto a domicilio en Tetuán (Madrid) y alrededores. Gastos de envío: 2,50 € en pedidos inferiores a 25 €; gratis a partir de 25 €. La franja de entrega se acuerda por teléfono al confirmar el pedido.</p>'+
+  '<h4>5. Forma de pago</h4><p>El pago se realiza en el momento de la entrega, con tarjeta o en efectivo. No se cobra ningún importe a través de la web.</p>'+
+  '<h4>6. Derecho de desistimiento</h4><p>De acuerdo con el artículo 103.d) del TRLGDCU, el derecho de desistimiento no es aplicable a la fruta, verdura, setas y demás bienes que puedan deteriorarse o caducar con rapidez, que constituyen el objeto de esta tienda.</p>'+
+  '<h4>7. Garantía y productos en mal estado</h4><p>El cliente puede revisar el pedido en el momento de la entrega. Si algún producto no está en buen estado o no corresponde con lo pedido, comunícalo en la entrega o, como máximo, en las 24 horas siguientes por teléfono o email, y se sustituirá o se reembolsará su importe, sin perjuicio de los derechos legales de garantía del consumidor.</p>'+
+  '<h4>8. Atención al cliente y reclamaciones</h4><p>Puedes contactar en '+TITULAR.email+' o en el '+TITULAR.telefono+'. La tienda dispone de hojas de reclamaciones a disposición de los consumidores. También puedes acudir a la Oficina Municipal de Información al Consumidor (OMIC) del Ayuntamiento de Madrid o a la Dirección General de Comercio y Consumo de la Comunidad de Madrid.</p>'+
+  '<h4>9. Legislación y jurisdicción</h4><p>Estas condiciones se rigen por la legislación española. En caso de controversia, serán competentes los juzgados y tribunales del domicilio del consumidor.</p>'+
+  '<p class="fi-muted">Última actualización: '+FECHA_LEGAL+'.</p>';}},
+ privacidad:{t:"Política de privacidad",h:function(){return ''+
+  '<p>Conforme al Reglamento (UE) 2016/679 (RGPD) y la Ley Orgánica 3/2018 (LOPDGDD), te informamos del tratamiento de tus datos personales.</p>'+
+  '<h4>1. Responsable</h4>'+titularHTML()+
+  '<h4>2. Datos que tratamos</h4><p>Nombre y apellidos, teléfono, dirección de entrega, forma de pago elegida, productos pedidos y fecha y hora de aceptación de las condiciones. No tratamos datos de tarjetas: el pago se realiza en la entrega.</p>'+
+  '<h4>3. Finalidad</h4><p>Gestionar, confirmar y entregar tu pedido, contactarte sobre él y atender incidencias o reclamaciones. No enviamos publicidad ni elaboramos perfiles.</p>'+
+  '<h4>4. Base legal</h4><p>La ejecución del contrato de compraventa (art. 6.1.b RGPD) y el cumplimiento de obligaciones legales fiscales y mercantiles (art. 6.1.c RGPD).</p>'+
+  '<h4>5. Conservación</h4><p>Durante la relación comercial y, después, durante los plazos legales de prescripción (hasta 6 años por obligaciones mercantiles, art. 30 del Código de Comercio, y 4 años por obligaciones tributarias). Después se suprimen.</p>'+
+  '<h4>6. Destinatarios y encargados del tratamiento</h4><p>No cedemos tus datos a terceros salvo obligación legal. Utilizamos proveedores que tratan datos por cuenta del responsable: Supabase (base de datos, servidores en la Unión Europea, Irlanda) y GitHub Pages (alojamiento de la web). Las fotografías se cargan desde Wikimedia Commons, que recibe la dirección IP del visitante al servirlas. Cuando algún proveedor pueda acceder a datos desde fuera del Espacio Económico Europeo, se hace con las garantías del RGPD (cláusulas contractuales tipo o Marco de Privacidad de Datos UE-EE. UU.).</p>'+
+  '<h4>7. Tus derechos</h4><p>Puedes ejercer los derechos de acceso, rectificación, supresión, oposición, limitación del tratamiento y portabilidad escribiendo a '+TITULAR.email+', indicando qué derecho ejerces. Si consideras que no se han atendido correctamente, puedes reclamar ante la Agencia Española de Protección de Datos (<a href="https://www.aepd.es" target="_blank" rel="noopener">www.aepd.es</a>).</p>'+
+  '<h4>8. Seguridad</h4><p>Los datos de los pedidos solo son accesibles para la cuenta de la tienda, con conexión cifrada (HTTPS) y control de acceso en la base de datos.</p>'+
+  '<p class="fi-muted">Última actualización: '+FECHA_LEGAL+'.</p>';}},
+ cookies:{t:"Política de cookies",h:function(){return ''+
+  '<p>Conforme al artículo 22.2 de la LSSI-CE, te informamos de que este sitio <b>no utiliza cookies publicitarias, analíticas ni de seguimiento</b>.</p>'+
+  '<p>Solo se usa almacenamiento técnico estrictamente necesario: el carrito mientras navegas y, únicamente para el personal de la tienda, la sesión de acceso a «Mi tienda» (guardada en el almacenamiento local del navegador). Este almacenamiento técnico está exento de consentimiento, por lo que no se muestra un banner de cookies.</p>'+
+  '<p>Al cargar las fotografías, Wikimedia Commons recibe la dirección IP del visitante para servirlas, sin instalar cookies de seguimiento en este sitio.</p>'+
+  '<p>Puedes borrar el almacenamiento local en cualquier momento desde la configuración de tu navegador.</p>'+
+  '<p class="fi-muted">Última actualización: '+FECHA_LEGAL+'.</p>';}}
+};
+function footer(){return '<footer class="fi-footer"><div><b>Frutas Insha 3 Allah</b> · Tetuán, Madrid · Precios con IVA incluido</div>'+
+  '<div class="fi-flinks"><a href="#" data-legal="aviso">Aviso legal</a><a href="#" data-legal="condiciones">Condiciones de contratación</a><a href="#" data-legal="privacidad">Privacidad</a><a href="#" data-legal="cookies">Cookies</a></div>'+
+  '<div class="fi-muted">© 2026 '+TITULAR.nombre+'</div></footer>';}
+function showLegal(k){var d=LEGAL[k];if(!d)return;var m=document.createElement("div");m.className="fi-modal";
+  m.innerHTML='<div class="fi-legalcard" role="dialog" aria-label="'+d.t+'"><div class="fi-legalhead"><h2>'+d.t+'</h2><button class="fi-legalx" aria-label="Cerrar">✕</button></div><div class="fi-legalbody">'+d.h()+'</div></div>';
+  m.onclick=function(e){if(e.target===m||e.target.classList.contains("fi-legalx"))m.remove();};document.body.appendChild(m);}
+document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-legal]");if(!a)return;e.preventDefault();e.stopPropagation();showLegal(a.getAttribute("data-legal"));},true);
 function cartbar(){return '<button class="fi-cartbar" data-checkout="1"><span>🛒 '+cartCount()+' producto'+(cartCount()>1?"s":"")+'</span><span>'+money(cartTotal())+' · Tramitar pedido →</span></button>';}
 
 /* ============ EVENTOS ============ */
@@ -495,14 +573,14 @@ function bind(){
   app.querySelectorAll("[data-q]").forEach(function(b){b.onclick=function(){var step=p&&p.unidad==="kg"?0.5:1;if(b.getAttribute("data-q")==="+")S._qty=+(S._qty+step).toFixed(1);else S._qty=Math.max(step,+(S._qty-step).toFixed(1));document.getElementById("qv").textContent=S._qty+" "+p.unidad;document.getElementById("sub").textContent=money(p.precio*S._qty);};});
   var aq=app.querySelector("[data-addq]");if(aq)aq.onclick=function(){var id=aq.getAttribute("data-addq");S.cart[id]=(S.cart[id]||0)+S._qty;toast("Añadido al carrito");S.screen="shop";render();};
   var cb=app.querySelector("[data-checkout]");if(cb)cb.onclick=function(){S.screen="checkout";render();};
-  var cf=app.querySelector("[data-confirm]");if(cf)cf.onclick=async function(){var n=document.getElementById("c_nombre").value.trim(),tel=document.getElementById("c_tel").value.trim(),dir=document.getElementById("c_dir").value.trim(),pago=document.getElementById("c_pago").value;if(!n||!tel||!dir){toast("Completa nombre, teléfono y dirección");return;}cf.disabled=true;cf.textContent="Enviando…";var items=cartItems();var total=cartTotal();var envio=total>=25?0:2.5;var ok=await enviarPedido({nombre:n,tel:tel,dir:dir,pago:pago},items,total,envio);if(ok){S.cart={};S.screen="shop";render();showConfirm(n,dir,tel);}else{cf.disabled=false;cf.textContent="Confirmar pedido";}};
+  var cf=app.querySelector("[data-confirm]");if(cf)cf.onclick=async function(){var n=document.getElementById("c_nombre").value.trim(),tel=document.getElementById("c_tel").value.trim(),dir=document.getElementById("c_dir").value.trim(),pago=document.getElementById("c_pago").value;if(!n||!tel||!dir){toast("Completa nombre, teléfono y dirección");return;}if(!document.getElementById("c_ok").checked){toast("Debes aceptar las condiciones para hacer el pedido");return;}cf.disabled=true;cf.textContent="Enviando…";var items=cartItems();var total=cartTotal();var envio=total>=25?0:2.5;var ok=await enviarPedido({nombre:n,tel:tel,dir:dir,pago:pago},items,total,envio);if(ok){S.cart={};S.screen="shop";render();showConfirm(n,dir,tel);}else{cf.disabled=false;cf.textContent="Confirmar pedido";}};
   // login
   var lg=app.querySelector("[data-login]");if(lg)lg.onclick=async function(){var em=document.getElementById("l_email").value.trim();var pw=document.getElementById("l_pass").value;var msg=document.getElementById("l_msg");if(!configurado){msg.textContent="Configura Supabase primero.";return;}lg.disabled=true;lg.textContent="Entrando…";var r=await sb.auth.signInWithPassword({email:em,password:pw});if(r.error){msg.textContent="No se pudo entrar: "+r.error.message;lg.disabled=false;lg.textContent="Entrar";return;}S.user=r.data.user;await cargarPedidos();render();};
   app.querySelectorAll("[data-atab]").forEach(function(b){b.onclick=function(){S.adminTab=b.getAttribute("data-atab");S.pedidoId=null;render();};});
   app.querySelectorAll("[data-ped]").forEach(function(c){c.onclick=function(){S.pedidoId=c.getAttribute("data-ped");render();window.scrollTo(0,0);};});
   var pb=app.querySelector("[data-pback]");if(pb)pb.onclick=function(){S.pedidoId=null;render();};
   var ps=document.getElementById("psort");if(ps)ps.onchange=function(){S.pedSort=ps.value;render();};
-  var aq=document.getElementById("aq");if(aq)aq.oninput=function(){S.adminQ=aq.value;var pos=aq.selectionStart;render();var n=document.getElementById("aq");if(n){n.focus();try{n.setSelectionRange(pos,pos);}catch(e){}}};
+  var aqs=document.getElementById("aq");if(aqs)aqs.oninput=function(){S.adminQ=aqs.value;var pos=aqs.selectionStart;render();var n=document.getElementById("aq");if(n){n.focus();try{n.setSelectionRange(pos,pos);}catch(e){}}};
   var rf=app.querySelector("[data-refresh]");if(rf)rf.onclick=async function(){rf.disabled=true;rf.textContent="Actualizando…";await cargarPedidos();render();};
   var lo=app.querySelector("[data-logout]");if(lo)lo.onclick=async function(){await sb.auth.signOut();S.user=null;render();};
   // admin/form
