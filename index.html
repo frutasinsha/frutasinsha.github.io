@@ -117,6 +117,12 @@
   .fi-legalbody{padding:6px 20px 20px;overflow-y:auto;font-size:.9rem;line-height:1.55;color:#333}
   .fi-legalbody h4{margin:16px 0 4px;color:var(--verde-osc)}
   .fi-credits{font-size:.78rem;padding-left:18px;word-break:break-word}
+  .fi-gal{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 8px}
+  .fi-gtile{position:relative;width:76px;height:76px;padding:0;border:2px solid #e3e3e3;border-radius:12px;overflow:hidden;background:#fff;cursor:pointer}
+  .fi-gtile img{width:100%;height:100%;object-fit:cover;display:block}
+  .fi-gtile.on{border-color:var(--verde);box-shadow:0 0 0 3px var(--verde-claro)}
+  .fi-gtile.on::after{content:"✓";position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:var(--verde);color:#fff;font-size:.75rem;line-height:20px;text-align:center}
+  .fi-gtile span{position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,.88);font-size:.62rem;font-weight:700;color:#444;padding:2px 0}
   .fi-tabs{display:flex;gap:6px;border-bottom:2px solid #eee;margin:4px 0 14px}
   .fi-tabs button{border:none;background:none;padding:10px 16px;font-weight:700;font-size:.95rem;color:#888;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
   .fi-tabs button.on{color:var(--verde-osc);border-bottom-color:var(--verde)}
@@ -369,7 +375,7 @@ function toast(m){var t=document.createElement("div");t.className="fi-toast";t.t
 /* ============ SUPABASE: carga y operaciones ============ */
 async function cargarProductos(){
   if(!configurado){S.products=SEED.slice();return;}
-  var r=await sb.from("productos").select("*").order("orden",{ascending:true,nullsFirst:false}).order("creado",{ascending:true}).order("nombre",{ascending:true});
+  var r=await sb.from("productos").select("id,nombre,cat,precio,unidad,img,descripcion,forma,color,orden,creado").order("orden",{ascending:true,nullsFirst:false}).order("creado",{ascending:true}).order("nombre",{ascending:true});
   if(r.error){console.error(r.error);toast("Error cargando productos");S.products=SEED.slice();return;}
   S.products=(r.data||[]).map(function(p){return {id:p.id,nombre:p.nombre,cat:p.cat,precio:Number(p.precio),unidad:p.unidad,img:p.img||"",desc:p.descripcion||"",forma:p.forma||"auto",color:p.color||"auto"};});
 }
@@ -380,7 +386,7 @@ async function cargarPedidos(){
 }
 async function guardarProducto(prod,esNuevo){
   if(!configurado){toast("Configura Supabase para guardar");return false;}
-  var row={nombre:prod.nombre,cat:prod.cat,precio:prod.precio,unidad:prod.unidad,img:prod.img,descripcion:prod.desc,forma:prod.forma,color:prod.color};
+  var row={fotos:prod.fotos||[],nombre:prod.nombre,cat:prod.cat,precio:prod.precio,unidad:prod.unidad,img:prod.img,descripcion:prod.desc,forma:prod.forma,color:prod.color};
   var r= esNuevo ? await sb.from("productos").insert(row).select() : await sb.from("productos").update(row).eq("id",prod.id).select();
   if(r.error){console.error(r.error);toast(/row-level security|permission/i.test(r.error.message)?"No se ha guardado: tu usuario ("+((S.user&&S.user.email)||"?")+") no tiene permiso. Entra con alebarri22@hotmail.com":"Error: "+r.error.message);return false;}
   if(!r.data||!r.data.length){toast("No se ha guardado: tu usuario ("+((S.user&&S.user.email)||"?")+") no tiene permiso. Entra con alebarri22@hotmail.com");return false;}
@@ -482,7 +488,7 @@ function form(){
   if(!S._f)S._f={nombre:p.nombre||"",desc:p.desc||"",precio:(p.precio||p.precio===0?p.precio:""),unidad:p.unidad||"kg",cat:p.cat||"fruta",img:p.img||"",forma:p.forma||"auto",color:p.color||"auto"};
   var f=S._f;var preview=f.img||artFor(f.nombre,f.cat,f.desc,{shape:f.forma,color:f.color});
   var shapeSel=!f.img?('<div class="fi-form-row2" style="margin-top:4px"><div><label class="fi-l">Forma de la ilustración</label><select id="f_forma">'+opt("auto","Automática (según el texto)",f.forma)+opt("redonda","Redonda",f.forma)+opt("alargada","Alargada",f.forma)+opt("racimo","Racimo / bayas",f.forma)+opt("hoja","De hoja",f.forma)+opt("pera","Tipo pera",f.forma)+'</select></div><div><label class="fi-l">Color de la ilustración</label><select id="f_color">'+opt("auto","Automático",f.color)+opt("rojo","Rojo",f.color)+opt("verde","Verde",f.color)+opt("amarillo","Amarillo",f.color)+opt("naranja","Naranja",f.color)+opt("morado","Morado",f.color)+opt("marron","Marrón",f.color)+opt("rosa","Rosa",f.color)+opt("blanco","Blanco / crema",f.color)+'</select></div></div>'):'';
-  return '<div class="fi-view"><button class="fi-back" data-back="admin">← Cancelar</button><h2 class="fi-t">'+(S.editId?"Editar producto":"Nuevo producto")+'</h2><label class="fi-l">Nombre</label><input id="f_nombre" value="'+esc(f.nombre)+'" placeholder="Ej. Cerezas"><label class="fi-l">Descripción</label><input id="f_desc" value="'+esc(f.desc)+'" placeholder="Ej. Producto nacional, dulces"><div class="fi-form-row"><div><label class="fi-l">Precio (€)</label><input id="f_precio" type="number" step="0.01" value="'+esc(f.precio)+'" placeholder="0.00"></div><div><label class="fi-l">Se vende por</label><select id="f_unidad">'+opt("kg","Kilo",f.unidad)+opt("unidad","Unidad",f.unidad)+'</select></div><div><label class="fi-l">Categoría</label><select id="f_cat">'+opt("fruta","Fruta",f.cat)+opt("verdura","Verdura",f.cat)+opt("cesta","Cesta",f.cat)+'</select></div></div><label class="fi-l">Foto del producto</label><div class="fi-imgbox"><img id="f_prev" src="'+preview+'" alt="preview"></div><div class="fi-img-actions"><button class="fi-edit" data-upload="1">📷 Subir foto</button>'+(f.img?'<button class="fi-del" data-clearimg="1">Usar ilustración</button>':'')+'<input id="f_file" type="file" accept="image/*" style="display:none"></div>'+shapeSel+'<p class="fi-hint">Si no subes foto, se usa una ilustración. Déjala en «Automática» o ajústala a mano.</p><button class="fi-bigbtn" data-save="1">'+(S.editId?"Guardar cambios":"Publicar producto")+'</button></div>';
+  return '<div class="fi-view"><button class="fi-back" data-back="admin">← Cancelar</button><h2 class="fi-t">'+(S.editId?"Editar producto":"Nuevo producto")+'</h2><label class="fi-l">Nombre</label><input id="f_nombre" value="'+esc(f.nombre)+'" placeholder="Ej. Cerezas"><label class="fi-l">Descripción</label><input id="f_desc" value="'+esc(f.desc)+'" placeholder="Ej. Producto nacional, dulces"><div class="fi-form-row"><div><label class="fi-l">Precio (€)</label><input id="f_precio" type="number" step="0.01" value="'+esc(f.precio)+'" placeholder="0.00"></div><div><label class="fi-l">Se vende por</label><select id="f_unidad">'+opt("kg","Kilo",f.unidad)+opt("unidad","Unidad",f.unidad)+'</select></div><div><label class="fi-l">Categoría</label><select id="f_cat">'+opt("fruta","Fruta",f.cat)+opt("verdura","Verdura",f.cat)+opt("setas","Setas",f.cat)+opt("cesta","Cesta",f.cat)+'</select></div></div><label class="fi-l">Foto del producto</label><div class="fi-imgbox"><img id="f_prev" src="'+preview+'" alt="preview"></div><div class="fi-img-actions"><button class="fi-edit" data-upload="1">📷 Subir foto</button>'+(f.img?'<button class="fi-del" data-clearimg="1">Usar ilustración</button>':'')+'<input id="f_file" type="file" accept="image/*" style="display:none"></div>'+galeriaHTML(f)+shapeSel+'<p class="fi-hint">Si no subes foto, se usa una ilustración. Déjala en «Automática» o ajústala a mano.</p><button class="fi-bigbtn" data-save="1">'+(S.editId?"Guardar cambios":"Publicar producto")+'</button></div>';
 }
 
 function fmtQty(p,q){return (p.unidad==="kg"?String(q).replace(".",",")+" kg":q+" ud");}
@@ -569,6 +575,21 @@ function reducirFoto(file,max,q){return new Promise(function(ok,ko){var u=URL.cr
 var CAT_NOMBRE={fruta:"fruta frutas",verdura:"verdura verduras hortalizas",setas:"setas seta champiñones hongos",cesta:"cestas cesta cajas caja regalo"};
 function norm(t){return String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();}
 function textoBusqueda(p){return norm(p.nombre+" "+(p.desc||"")+" "+(CAT_NOMBRE[p.cat]||p.cat));}
+
+function fotoOriginal(nombre){for(var i=0;i<SEED.length;i++)if(SEED[i].nombre===nombre)return SEED[i].img||"";return "";}
+function uniq(a){var o=[];a.forEach(function(x){if(x&&o.indexOf(x)<0)o.push(x);});return o;}
+async function cargarFotos(id){
+  if(!configurado)return;var r=await sb.from("productos").select("fotos").eq("id",id).single();
+  if(S.editId!==id)return;S._fotos=(!r.error&&r.data&&Array.isArray(r.data.fotos))?r.data.fotos:[];render();}
+function galeriaLista(){var p=S.editId?find(S.editId):null;
+  return uniq([p?fotoOriginal(p.nombre):""].concat(S._fotos||[],[p?p.img:"",S._f?S._f.img:""]));}
+function fotosParaGuardar(nueva){var p=S.editId?find(S.editId):null;var l=uniq((S._fotos||[]).concat([p?p.img:"",nueva]));
+  if(l.length>8)l=[l[0]].concat(l.slice(-7));return l;}
+function galeriaHTML(f){var g=galeriaLista();S._gal=g;
+  var tiles=g.map(function(u,i){return '<button type="button" class="fi-gtile'+(u===f.img?' on':'')+'" data-pick="'+i+'" title="Usar esta foto"><img src="'+u+'" alt=""></button>';}).join("");
+  var ilu='<button type="button" class="fi-gtile'+(!f.img?' on':'')+'" data-pick="-1" title="Usar ilustración"><img src="'+artFor(f.nombre,f.cat,f.desc,{shape:f.forma,color:f.color})+'" alt=""><span>Ilustración</span></button>';
+  var cargando=(S.editId&&S._fotos===null)?'<span class="fi-hint">Cargando fotos anteriores…</span>':'';
+  return '<label class="fi-l">Fotos guardadas de este producto <small style="font-weight:400;color:#888">(pulsa una para usarla)</small></label><div class="fi-gal">'+tiles+ilu+'</div>'+cargando;}
 function cartbar(){return '<button class="fi-cartbar" data-checkout="1"><span>🛒 '+cartCount()+' producto'+(cartCount()>1?"s":"")+'</span><span>'+money(cartTotal())+' · Tramitar pedido →</span></button>';}
 
 /* ============ EVENTOS ============ */
@@ -597,15 +618,16 @@ function bind(){
   var rf=app.querySelector("[data-refresh]");if(rf)rf.onclick=async function(){rf.disabled=true;rf.textContent="Actualizando…";await cargarPedidos();render();};
   var lo=app.querySelector("[data-logout]");if(lo)lo.onclick=async function(){await sb.auth.signOut();S.user=null;render();};
   // admin/form
-  var nw=app.querySelector("[data-new]");if(nw)nw.onclick=function(){S.adminTab="productos";S.adding=true;S.editId=null;S._f=null;render();};
-  app.querySelectorAll("[data-edit]").forEach(function(b){b.onclick=function(){S.editId=b.getAttribute("data-edit");S.adding=false;S._f=null;render();};});
+  var nw=app.querySelector("[data-new]");if(nw)nw.onclick=function(){S.adminTab="productos";S._fotos=[];S.adding=true;S.editId=null;S._f=null;render();};
+  app.querySelectorAll("[data-edit]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-edit");S.editId=id;S.adding=false;S._f=null;S._fotos=null;render();cargarFotos(id);};});
   app.querySelectorAll("[data-del]").forEach(function(b){b.onclick=async function(){var id=b.getAttribute("data-del");b.disabled=true;var ok=await borrarProducto(id);await cargarProductos();render();if(ok)toast("Producto borrado");};});
   ["f_nombre","f_desc","f_cat","f_forma","f_color"].forEach(function(id){var el=document.getElementById(id);if(el){el.oninput=function(){syncForm();updatePreview();};el.onchange=function(){syncForm();updatePreview();};}});
   var up=app.querySelector("[data-upload]");if(up)up.onclick=function(){document.getElementById("f_file").click();};
   var file=document.getElementById("f_file");if(file)file.onchange=function(e){var fl=e.target.files[0];if(!fl)return;if(!/^image\//.test(fl.type)){toast("El archivo no es una imagen");return;}toast("Procesando foto…");
     reducirFoto(fl,900,0.82).then(function(url){syncForm();S._f.img=url;render();}).catch(function(){toast("No se pudo leer la foto. Prueba con otra (JPG o PNG).");});};
+  app.querySelectorAll("[data-pick]").forEach(function(b){b.onclick=function(){syncForm();var g=S._gal||[];S._f.img=g[+b.getAttribute("data-pick")]||"";render();};});
   var ci=app.querySelector("[data-clearimg]");if(ci)ci.onclick=function(){syncForm();S._f.img="";render();};
-  var sv=app.querySelector("[data-save]");if(sv)sv.onclick=async function(){syncForm();var f=S._f;var esNuevo=!S.editId;var prod={id:S.editId,nombre:(f.nombre||"").trim()||"Producto",desc:(f.desc||"").trim(),precio:parseFloat(f.precio)||0,unidad:f.unidad,cat:f.cat,forma:f.forma,color:f.color,img:f.img};sv.disabled=true;sv.textContent="Guardando…";var ok=await guardarProducto(prod,esNuevo);if(ok){await cargarProductos();S.editId=null;S.adding=false;S._f=null;render();toast(esNuevo?"Producto publicado":"Producto actualizado");}else{sv.disabled=false;sv.textContent="Guardar";}};
+  var sv=app.querySelector("[data-save]");if(sv)sv.onclick=async function(){syncForm();var f=S._f;var esNuevo=!S.editId;var prod={id:S.editId,nombre:(f.nombre||"").trim()||"Producto",desc:(f.desc||"").trim(),precio:parseFloat(f.precio)||0,unidad:f.unidad,cat:f.cat,forma:f.forma,color:f.color,img:f.img,fotos:fotosParaGuardar(f.img)};sv.disabled=true;sv.textContent="Guardando…";var ok=await guardarProducto(prod,esNuevo);if(ok){await cargarProductos();S.editId=null;S.adding=false;S._f=null;render();toast(esNuevo?"Producto publicado":"Producto actualizado");}else{sv.disabled=false;sv.textContent="Guardar";}};
 }
 function showConfirm(nombre,dir,tel){var m=document.createElement("div");m.className="fi-modal";m.innerHTML='<div class="fi-modal-card"><div class="fi-check">✓</div><h2>¡Pedido confirmado!</h2><p>Gracias, <b>'+esc(nombre)+'</b>. Te lo llevamos a <b>'+esc(dir)+'</b>.</p><p class="fi-muted">Te llamaremos al '+esc(tel)+' para confirmar la entrega.</p><button class="fi-bigbtn">Seguir comprando</button></div>';m.onclick=function(e){if(e.target===m||e.target.tagName==="BUTTON")m.remove();};document.body.appendChild(m);}
 
