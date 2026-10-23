@@ -423,7 +423,7 @@ function render(){
 }
 function header(){return '<div class="fi-header"><div class="fi-brand" data-act="home"><div class="fi-mark">🍎</div><div><b>Frutas Insha 3 Allah</b><span>Tetuán · Madrid</span></div></div><div class="fi-switch"><button data-view="tienda" class="'+(S.view==="tienda"?"on":"")+'">Comprar</button><button data-view="admin" class="'+(S.view==="admin"?"on":"")+'">Mi tienda</button></div></div>';}
 function shop(){
-  var list=S.products.filter(function(p){return (S.cat==="todos"||p.cat===S.cat)&&p.nombre.toLowerCase().indexOf(S.search.toLowerCase())>=0;});
+  var qn=norm(S.search);var list=S.products.filter(function(p){return (S.cat==="todos"||p.cat===S.cat)&&(!qn||textoBusqueda(p).indexOf(qn)>=0);});
   var cats=CATS.map(function(c){return '<button data-cat="'+c.id+'" class="'+(S.cat===c.id?"on":"")+'"><span>'+c.emoji+'</span>'+c.nombre+'</button>';}).join("");
   var cards=list.map(function(p){return '<div class="fi-card" data-open="'+p.id+'"><div class="fi-thumb"><img loading="lazy" src="'+imgFor(p)+'" data-pid="'+p.id+'" onerror="__fbImg(this)" alt="'+esc(p.nombre)+'"></div><div class="fi-cbody"><h3>'+esc(p.nombre)+'</h3><p class="fi-desc">'+esc(p.desc)+'</p><div class="fi-price">'+money(p.precio)+' <small>/ '+p.unidad+'</small></div><div class="fi-stepwrap" data-sw="'+p.id+'">'+stepperInner(p)+'</div></div></div>';}).join("");
   return '<div class="fi-hero"><h1>Fruta y verdura fresca, de la huerta a tu mesa</h1><p>Selección diaria del mercado central. Pide online y recibe en casa.</p></div><div class="fi-search"><input id="q" placeholder="🔍 Buscar producto…" value="'+esc(S.search)+'"></div><div class="fi-cats">'+cats+'</div>'+(list.length?'':'<p class="fi-empty">No hay productos en esta categoría todavía.</p>')+'<div class="fi-grid">'+cards+'</div>';
@@ -455,8 +455,8 @@ function admin(){
       '</select><button class="fi-edit" data-refresh="1">↻ Actualizar</button></div>'+
       (list||'<p class="fi-empty">Todavía no hay pedidos.</p>');
   }else{
-    var q=(S.adminQ||"").toLowerCase();
-    var vis=S.products.filter(function(p){return !q||p.nombre.toLowerCase().indexOf(q)>=0||(p.cat||"").indexOf(q)>=0;});
+    var q=norm(S.adminQ);
+    var vis=S.products.filter(function(p){return !q||textoBusqueda(p).indexOf(q)>=0;});
     var rows=vis.map(function(p){return '<div class="fi-admin-row"><img loading="lazy" src="'+imgFor(p)+'" data-pid="'+p.id+'" onerror="__fbImg(this)" alt=""><div class="fi-ar-info"><b>'+esc(p.nombre)+'</b><small>'+money(p.precio)+' / '+p.unidad+' · '+p.cat+'</small></div><div class="fi-ar-actions"><button class="fi-edit" data-edit="'+p.id+'">Editar</button><button class="fi-del" data-del="'+p.id+'">🗑</button></div></div>';}).join("");
     body='<input class="fi-asearch" id="aq" placeholder="🔍 Buscar producto…" value="'+esc(S.adminQ||"")+'">'+
       '<div class="fi-tabbar"><span>'+(q?vis.length+' de '+np+' productos':np+' productos publicados')+'</span><button class="fi-newbtn" data-new="1">+ Nuevo producto</button></div>'+
@@ -565,6 +565,10 @@ function reducirFoto(file,max,q){return new Promise(function(ok,ko){var u=URL.cr
     c.width=Math.round(w*k);c.height=Math.round(h*k);var x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
     URL.revokeObjectURL(u);ok(c.toDataURL("image/jpeg",q));};
   im.onerror=function(){URL.revokeObjectURL(u);ko();};im.src=u;});}
+
+var CAT_NOMBRE={fruta:"fruta frutas",verdura:"verdura verduras hortalizas",setas:"setas seta champiñones hongos",cesta:"cestas cesta cajas caja regalo"};
+function norm(t){return String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();}
+function textoBusqueda(p){return norm(p.nombre+" "+(p.desc||"")+" "+(CAT_NOMBRE[p.cat]||p.cat));}
 function cartbar(){return '<button class="fi-cartbar" data-checkout="1"><span>🛒 '+cartCount()+' producto'+(cartCount()>1?"s":"")+'</span><span>'+money(cartTotal())+' · Tramitar pedido →</span></button>';}
 
 /* ============ EVENTOS ============ */
