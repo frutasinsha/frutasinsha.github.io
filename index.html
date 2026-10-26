@@ -174,8 +174,9 @@
   .fi-sticky .fi-cats{padding-top:8px;padding-bottom:10px}
   .fi-or-del{border:none;background:#fdecec;color:#c62828;border-radius:10px;width:36px;height:36px;font-size:1rem;cursor:pointer;flex-shrink:0}
   .fi-or-del:hover{background:#f9d6d6}
-  .fi-catgrp{background:#fff;border-radius:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.05);overflow:hidden}
-  .fi-cathead{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 14px;cursor:pointer;user-select:none}
+  .fi-catgrp{background:#fff;border-radius:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+  .fi-cathead{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 14px;cursor:pointer;user-select:none;background:#fff;border-radius:14px}
+  .fi-catgrp.open .fi-cathead{position:sticky;top:var(--hh,58px);z-index:20;border-radius:14px 14px 0 0;box-shadow:0 4px 8px -6px rgba(0,0,0,.18)}
   .fi-cathead .em{font-size:1.5rem;width:34px;text-align:center}
   .fi-cathead .nm{flex:1;min-width:0}
   .fi-cathead .nm b{display:block;color:var(--verde-osc);font-size:1rem}
@@ -801,7 +802,8 @@ function bind(){
   var rf=app.querySelector("[data-refresh]");if(rf)rf.onclick=async function(){rf.disabled=true;rf.textContent="Actualizando…";await cargarPedidos();render();};
   var lo=app.querySelector("[data-logout]");if(lo)lo.onclick=async function(){await sb.auth.signOut();S.user=null;render();};
   // admin/form
-  app.querySelectorAll("[data-tcat]").forEach(function(h){h.onclick=function(e){if(e.target.closest("[data-ecat]"))return;var id=h.getAttribute("data-tcat");S.openCats=S.openCats||{};S.openCats[id]=!S.openCats[id];render();};});
+  app.querySelectorAll("[data-tcat]").forEach(function(h){h.onclick=function(e){if(e.target.closest("[data-ecat]"))return;var id=h.getAttribute("data-tcat");S.openCats=S.openCats||{};var cerrando=!!S.openCats[id];S.openCats[id]=!S.openCats[id];render();
+    if(cerrando){var nh=app.querySelector('[data-tcat="'+id+'"]');if(nh){var hh=(document.querySelector(".fi-header")||{offsetHeight:0}).offsetHeight;var top=nh.getBoundingClientRect().top;if(top<hh)window.scrollBy(0,top-hh-8);}}};});
   app.querySelectorAll("[data-ecat]").forEach(function(b){b.onclick=function(e){e.stopPropagation();showCatEditor(catInfo(b.getAttribute("data-ecat")));};});
   var nc=app.querySelector("[data-newcat]");if(nc)nc.onclick=function(){showCatEditor(null);};
   app.querySelectorAll("[data-newin]").forEach(function(b){b.onclick=function(){S._newCat=b.getAttribute("data-newin");S.adminTab="productos";S._fotos=[];S.adding=true;S.editId=null;S._f=null;render();window.scrollTo(0,0);};});
