@@ -2,7 +2,7 @@
   :root{--verde:#2f7d22;--verde-osc:#225c17;--verde-claro:#eaf4e3;--naranja:#f08c00}
   *{box-sizing:border-box}
   html,body{margin:0}
-  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:#262626;background:#fbfdf9;min-height:100vh;padding-bottom:90px}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:#262626;background:var(--fondo,#fbfdf9);min-height:100vh;padding-bottom:90px}
   img{display:block}
   .fi-header{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;gap:10px}
   .fi-brand{display:flex;align-items:center;gap:10px;cursor:pointer;min-width:0}
@@ -163,7 +163,7 @@
   .fi-pfilter button.on{background:var(--verde-osc);border-color:var(--verde-osc);color:#fff}
   .fi-swipehint{font-size:.78rem;color:#888;margin:0 0 8px}
   @media(hover:hover){.fi-swipehint{display:none}}
-  .fi-sticky{position:sticky;top:var(--hh,58px);z-index:25;background:#fbfdf9;box-shadow:0 6px 10px -8px rgba(0,0,0,.15)}
+  .fi-sticky{position:sticky;top:var(--hh,58px);z-index:25;background:var(--fondo,#fbfdf9);box-shadow:0 6px 10px -8px rgba(0,0,0,.15)}
   .fi-sticky .fi-search{padding-top:10px}
   .fi-sticky .fi-cats{padding-top:8px;padding-bottom:10px}
   .fi-or-del{border:none;background:#fdecec;color:#c62828;border-radius:10px;width:36px;height:36px;font-size:1rem;cursor:pointer;flex-shrink:0}
